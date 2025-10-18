@@ -7,16 +7,13 @@
 
   outputs = { self, nixpkgs }:
   let
+    system = "x86_64-linux";
     pkgs = import nixpkgs {
-      system = "x86_64-linux";
+      inherit system;
     };
     stm32cubeide = pkgs.callPackage ./stm32cubeide.nix {};
   in
   {
-    devShell.x86_64-linux = pkgs.mkShell {
-      buildInputs = [
-        stm32cubeide
-      ];
-    };
+    packages.${system}.default = stm32cubeide;
   };
 }
