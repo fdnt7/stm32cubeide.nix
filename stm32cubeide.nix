@@ -1,12 +1,28 @@
 { stdenv, lib, buildFHSEnv, autoPatchelfHook, unzip, dpkg, gtk3,
   cairo, glib, webkitgtk, libusb1, bash, libsecret, alsa-lib, bzip2,
-  openssl, udev, ncurses5, tlf, xorg, fontconfig, pcsclite, python3, ...
+  openssl, udev, ncurses5, tlf, xorg, fontconfig, pcsclite, python3, requireFile, ...
 }:
 let
   cubeide-version = "1.18.1_24813_20250409_2138";
   makeself-pkg = stdenv.mkDerivation {
     name = "stm32cubeide-makeself-pkg";
-    src = ./en.st-stm32cubeide_${cubeide-version}_amd64.sh.zip;
+    src = requireFile rec {
+      name = "en.st-stm32cubeide_${cubeide-version}_amd64.sh.zip";
+      url = "https://www.st.com/en/development-tools/stm32cubeide.html";
+      message = ''
+        This Nix expression requires that ${name} already be part of the store. To
+        obtain it you need to navigate to ${url} and download it.
+
+        and then add the file to the Nix store using either:
+
+          nix-store --add-fixed sha256 ${name}
+
+        or
+
+          nix-prefetch-url --type sha256 file:///path/to/${name}
+      '';
+      sha256 = "0kymv1864z5sik99ssw6bib8h5rglc7yskf1dnyjq3assgk6xiva";
+    };
     unpackCmd = "mkdir tmp && ${unzip}/bin/unzip -d tmp $src";
     installPhase = ''
       sh st-stm32cubeide_${cubeide-version}_amd64.sh --target $out --noexec
