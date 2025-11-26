@@ -1,22 +1,18 @@
 {
   stdenv,
-  lib,
   buildFHSEnv,
   autoPatchelfHook,
   unzip,
-  dpkg,
   gtk3,
   cairo,
   glib,
   webkitgtk,
   libusb1,
-  bash,
   libsecret,
   alsa-lib,
   bzip2,
   openssl,
   udev,
-  ncurses5,
   tlf,
   xorg,
   fontconfig,
@@ -57,8 +53,10 @@ let
     '';
   };
 
-  makeself-pkg = stdenv.mkDerivation {
-    name = "stm32cubeide-makeself-pkg";
+  stm32cubeide = stdenv.mkDerivation {
+    name = "stm32cubeide-full";
+    version = "1.19.0";
+
     src = requireFile rec {
       name = "st-stm32cubeide_${cubeide-version}_amd64.sh.zip";
       url = "https://www.st.com/en/development-tools/stm32cubeide.html";
@@ -76,18 +74,13 @@ let
       '';
       sha256 = "0v9wkjv1ibw04jx5agjra9ny274x8ahys98281h1ihdjpyzrfdzs";
     };
-    unpackCmd = "mkdir tmp && ${unzip}/bin/unzip -d tmp $src";
-    installPhase = ''
-      sh st-stm32cubeide_${cubeide-version}_amd64.sh --target $out --noexec
-    '';
-  };
 
-  stm32cubeide = stdenv.mkDerivation {
-    name = "stm32cubeide";
-    version = "1.19.0";
-    src = "${makeself-pkg}/st-stm32cubeide_${cubeide-version}_amd64.tar.gz";
-    sourceRoot = "."; # Tell nix the source is in the root
-    nativeBuildInputs = [ autoPatchelfHook ];
+    dontUnpack = true;
+
+    nativeBuildInputs = [
+      autoPatchelfHook
+      unzip
+    ];
     buildInputs = [
       stdenv.cc.cc.lib # libstdc++.so.6
       libsecret
@@ -114,49 +107,48 @@ let
       libXtst
       libXi
     ]);
-    autoPatchelfIgnore = [ ]; # Let autoPatchelf patch gdb
+
     autoPatchelfIgnoreMissingDeps = true; # libcrypto.so.1.0.0
     preferLocalBuild = true;
+
     installPhase = ''
+      # The $out directory isn't created automatically when dontUnpack is true.
       mkdir -p $out
-      cp -r ./* $out/
-    '';
-  };
 
-  stlink-server = stdenv.mkDerivation {
-    pname = "st-stlink-server";
-    version = "2.1.1-1";
+      # Unzip the main installer archive
+      unzip $src -d installer_unzipped
+      cd installer_unzipped
 
-    src = requireFile rec {
-      name = "st-stlink-server.2.1.1-1-linux-amd64.install.sh";
-      url = "https://www.st.com/en/development-tools/stsw-link009.html";
-      message = ''
-        This Nix expression requires that ${name} already be part of the store. To
-        obtain it you need to navigate to ${url} and download it.
+      # Extract the contents of the makeself installer script
+      sh st-stm32cubeide_*.sh --target extracted_contents --noexec
+      cd extracted_contents
 
-        Then add the file to the Nix store using:
+      # 1. Install the main IDE from its tarball
+      tar zxf st-stm32cubeide_${cubeide-version}_amd64.tar.gz -C $out
 
-          nix-prefetch-url --type sha256 file:///path/to/${name}
-      '';
-      # You must calculate and replace this hash
-      sha256 = "1wmwmx8fdvnb4514ki9hx3p068x8l8y3npl5b42l512970j2nd5m";
-    };
-
-    dontUnpack = true;
-
-    nativeBuildInputs = [ autoPatchelfHook ];
-    buildInputs = [
-      udev
-      libusb1
-    ];
-
-    installPhase = ''
-      sh $src --target $out --noexec
-      # The server binary is in the root, move it to $out/bin
+      # 2. Extract and install the stlink-server binary
+      mkdir stlink_server_tmp
+      sh st-stlink-server.*.install.sh --target stlink_server_tmp --noexec
       mkdir -p $out/bin
-      mv $out/stlink-server $out/bin/
+      mv stlink_server_tmp/stlink-server $out/bin/
+
+      # 3. Extract and install the udev rules
+      mkdir -p $out/lib/udev/rules.d
+
+      # Extract STLink rules
+      mkdir stlink_rules_tmp
+      sh st-stlink-udev-rules-*.sh --target stlink_rules_tmp --noexec
+      # The rules are extracted directly into the target dir, not a nested etc/
+      cp stlink_rules_tmp/*.rules $out/lib/udev/rules.d/
+
+      # Extract Segger J-Link rules
+      mkdir segger_rules_tmp
+      sh segger-jlink-udev-rules-*.sh --target segger_rules_tmp --noexec
+      # The rules are extracted directly into the target dir, not a nested etc/
+      cp segger_rules_tmp/*.rules $out/lib/udev/rules.d/
     '';
   };
+
 in
 buildFHSEnv {
   name = "stm32cubeide";
@@ -164,33 +156,21 @@ buildFHSEnv {
   targetPkgs =
     pkgs: with pkgs; [
       stm32cubeide
-      stlink-server
       gtk3
       cairo
       glib
       webkitgtk
       gvfs
       dbus
-
-      stdenv.cc.cc.lib # libstdc++.so.6
-      libsecret
-      alsa-lib
-      bzip2
-      openssl
-      udev
-      ncurses-5-7
-      tlf
-      fontconfig
-      pcsclite
-      python3
     ];
 
+  # runScript = ''
+  #   #!${bash}/bin/bash
+  #   echo "STM32CubeIDE FHS environment ready."
+  #   echo "Run '${stm32cubeide}/stm32cubeide' to start the IDE."
+  #   bash
+  # '';
   runScript = ''
-    #!${bash}/bin/bash
-    echo "Path to stm32cubeide: ${stm32cubeide}"
-    echo "Path to stlink-server: ${stlink-server}"
-    # To launch the IDE, uncomment the line below and comment out 'bash'
-    # exec ${stm32cubeide}/stm32cubeide
-    bash
+    ${stm32cubeide}/stm32cubeide
   '';
 }
