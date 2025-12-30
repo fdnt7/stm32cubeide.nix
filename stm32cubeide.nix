@@ -169,7 +169,9 @@ buildFHSEnv {
   #   echo "Run '${stm32cubeide}/stm32cubeide' to start the IDE."
   #   bash
   # '';
-  runScript = ''
-    ${stm32cubeide}/stm32cubeide
+  profile = ''
+    export GDK_BACKEND=x11
   '';
+
+  runScript = "${stm32cubeide}/stm32cubeide";
 }
