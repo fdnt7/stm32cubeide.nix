@@ -6,7 +6,7 @@
   gtk3,
   cairo,
   glib,
-  webkitgtk,
+  webkitgtk_6_0,
   libusb1,
   libsecret,
   alsa-lib,
@@ -158,7 +158,7 @@ buildFHSEnv {
       gtk3
       cairo
       glib
-      webkitgtk
+      webkitgtk_6_0
       gvfs
       dbus
     ];
