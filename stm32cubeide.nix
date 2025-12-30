@@ -19,7 +19,6 @@
   pcsclite,
   python3,
   requireFile,
-  fetchurl,
   ...
 }:
 let
@@ -31,7 +30,7 @@ let
     pname = "ncurses";
     version = "5.7";
 
-    src = fetchurl {
+    src = builtins.fetchurl {
       url = "https://ftp.gnu.org/pub/gnu/ncurses/ncurses-5.7.tar.gz";
       sha256 = "1x4q6kma6zgg438llbgiac3kik7j2lln9v97jdffv3fyqyjxx6qa";
     };
