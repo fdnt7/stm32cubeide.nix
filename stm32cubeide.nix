@@ -13,7 +13,6 @@
   bzip2,
   openssl,
   udev,
-  tlf,
   xorg,
   fontconfig,
   pcsclite,
@@ -43,7 +42,7 @@ let
       "--without-cxx-binding"
     ];
 
-    NIX_CFLAGS_COMPILE = "-Wno-error=format-security";
+    NIX_CFLAGS_COMPILE = "-Wno-error=format-security -Wno-error=incompatible-pointer-types";
 
     # The gdb binary also needs libtinfo.so.5, which is built by ncurses
     postInstall = ''
@@ -88,7 +87,6 @@ let
       openssl
       udev
       ncurses-5-7
-      tlf
       fontconfig
       pcsclite
       python3
